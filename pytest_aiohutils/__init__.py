@@ -27,11 +27,11 @@ def pytest_addoption(parser: Parser):
         help='Enable record mode for tests (saves new responses).',
     )
     group.addoption(
-        '--offline',
+        '--online',
         action='store_true',
-        default=True,
-        dest='OFFLINE_MODE',
-        help='Enable offline mode (only uses saved data).',
+        default=False,
+        dest='ONLINE_MODE',
+        help='Force tests to run online (disables mocking).',
     )
     group.addoption(
         '--remove-unused-data',
@@ -52,8 +52,11 @@ def pytest_configure(config: Config):
     global tests_path, _remove_unused_testdata, testdata
 
     RECORD_MODE = config.getoption('RECORD_MODE')
-    # Note: If RECORD_MODE is true, we always disable OFFLINE_MODE
-    OFFLINE_MODE = config.getoption('OFFLINE_MODE') and not RECORD_MODE
+    ONLINE_MODE = config.getoption('ONLINE_MODE')
+
+    # It is offline UNLESS (RECORD_MODE is True OR ONLINE_MODE is True)
+    OFFLINE_MODE = not (RECORD_MODE or ONLINE_MODE)
+
     REMOVE_UNUSED_TESTDATA = _remove_unused_testdata = (
         config.getoption('REMOVE_UNUSED_TESTDATA') and OFFLINE_MODE
     )
@@ -66,7 +69,6 @@ def pytest_configure(config: Config):
     }
 
     # Set the tests_path to the root of the test directory (e.g., /project_root/tests),
-    # using Path objects for clean, cross-platform path construction.
     tests_path = Path(config.rootpath) / 'tests'
     testdata = tests_path / 'testdata'
 
@@ -163,6 +165,7 @@ async def session(test_config: TestConfig):
         ClientSession.get = original_get
         return
 
+    # If not OFFLINE and not RECORD, just run with the original session (live online)
     yield
     return
 
