@@ -18,7 +18,7 @@ dependencies = [
     'pytest-asyncio',
     'pydantic',
 ]
-version = "0.22.5.dev1"
+version = "0.22.5"
 
 [project.entry-points.pytest11]
 aiohutils_plugin = "pytest_aiohutils"
