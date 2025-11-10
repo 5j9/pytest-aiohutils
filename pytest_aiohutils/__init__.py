@@ -1,4 +1,4 @@
-__version__ = '0.22.5'
+__version__ = '0.22.6.dev1'
 import atexit
 from collections.abc import Iterator, Mapping
 from inspect import iscoroutinefunction
