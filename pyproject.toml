@@ -1,0 +1,75 @@
+[build-system]
+requires = ['uv_build>=0.8.3,<0.9.0']
+build-backend = 'uv_build'
+
+[project]
+name = "pytest-aiohutils"
+authors = [{ name = "5j9", email = "5j9@users.noreply.github.com" }]
+license = { text = "GNU General Public License v3 (GPLv3)" }
+description = "Pytest plugin providing fixtures and configuration for aiohutils projects (offline, record, cleanup modes)."
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3.10",
+]
+requires-python = ">=3.12"
+dependencies = [
+    'aiohutils',
+    'pytest',
+    'pytest-asyncio',
+    'pydantic',
+]
+version = "0.22.4.dev1"
+
+[project.entry-points.pytest11]
+aiohutils_plugin = "pytest_aiohutils"
+
+[tool.uv.sources]
+# The package name must match the project name
+pytest-aiohutils = { workspace = true }
+
+
+[tool.uv.build-backend]
+module-root = "" 
+module-name = "pytest_aiohutils"
+
+[project.readme]
+file = "README.rst"
+content-type = "text/x-rst"
+
+[project.urls]
+Homepage = "https://github.com/5j9/pytest-aiohutils"
+
+[tool.ruff]
+line-length = 79
+format.quote-style = 'single'
+lint.isort.combine-as-imports = true
+lint.extend-select = [
+    'W605', # invalid-escape-sequence
+    'FA',  # flake8-future-annotations
+    'I',  # isort
+    'UP',  # pyupgrade
+    'RUF', # Ruff-specific rules (RUF)
+]
+lint.ignore = [
+    'E721',  # Do not compare types, use `isinstance()`
+    'RUF001',  # ambiguous-unicode-character-string    
+    'RUF002',  # ambiguous-unicode-character-docstring
+    'RUF003',  # ambiguous-unicode-character-comment
+    'RUF012',  # mutable-class-default
+]
+
+[tool.pytest.ini_options]
+addopts = '--quiet --tb=short'
+
+[tool.pyright]
+typeCheckingMode = 'standard'
+reportDeprecated = "warning"
+reportPropertyTypeMismatch = "warning"
+reportUnnecessaryCast = "warning"
+reportUnnecessaryContains = "warning"
+reportUnnecessaryIsInstance = "warning"
+reportUnnecessaryTypeIgnoreComment = true
+reportInvalidStringEscapeSequence = false
+reportConstantRedefinition = 'error'
+reportTypeCommentUsage = 'warning'
+reportUnnecessaryComparison = 'warning'
