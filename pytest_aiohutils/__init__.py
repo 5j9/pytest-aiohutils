@@ -141,7 +141,7 @@ async def session(test_config: TestConfig):
 
         class FakeSession:
             @staticmethod
-            async def get(*_, **__):
+            async def request(*_, **__):
                 return FakeResponse()
 
         orig_session = SessionManager.session
@@ -151,18 +151,18 @@ async def session(test_config: TestConfig):
         return
 
     if RECORD_MODE:
-        original_get = ClientSession.get
+        original_request = ClientSession.request
 
-        async def recording_get(*args, **kwargs):
-            resp = await original_get(*args, **kwargs)
+        async def recording_request(*args, **kwargs):
+            resp = await original_request(*args, **kwargs)
             content = await resp.read()
             FakeResponse().file.write_bytes(content)
             return resp
 
-        ClientSession.get = recording_get  # type: ignore
+        ClientSession.request = recording_request  # type: ignore
 
         yield
-        ClientSession.get = original_get
+        ClientSession.request = original_request
         return
 
     # If not OFFLINE and not RECORD, just run with the original session (live online)
