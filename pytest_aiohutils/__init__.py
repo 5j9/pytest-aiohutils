@@ -1,8 +1,7 @@
 __version__ = '0.22.7.dev1'
 import atexit
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Mapping
 from inspect import iscoroutinefunction
-from itertools import cycle
 from pathlib import Path
 from typing import TypedDict
 from unittest.mock import patch
@@ -110,14 +109,12 @@ class EqualToEverything:
 class FakeResponse:
     """A mock response object for offline mode."""
 
-    __slots__ = 'files'
-    files: Iterator
+    __slots__ = 'file'
     url = EqualToEverything()
     history = ()
 
-    @property
-    def file(self) -> Path:
-        return next(self.files)
+    def __init__(self, file: Path) -> None:
+        self.file = file
 
     async def read(self) -> bytes:
         return self.file.read_bytes()
@@ -129,6 +126,33 @@ class FakeResponse:
         return (await self.read()).decode()
 
 
+class FakeSession:
+    __slots__ = ()
+    file_map: list[tuple[str, Path | list[Path]]] = []
+    url_to_key: Callable[[str], str]
+
+    @classmethod
+    def file(cls, url: str):
+        print(url, cls.file_map)
+        for url_end, file_or_files in cls.file_map:
+            if url.endswith(url_end):
+                break
+        else:
+            raise ValueError('URL did not match any file_map entries.')
+
+        if isinstance(file_or_files, list):
+            file = file_or_files.pop()
+        else:
+            file = file_or_files
+
+        return file
+
+    async def request(self, method: str, url: str, *_, **__):
+        file = self.file(url)
+        _used_files.add(file)
+        return FakeResponse(file)
+
+
 @fixture(scope='session')
 # DEPENDENCY INJECTION: session now depends on test_config to get its mode
 async def session(test_config: TestConfig):
@@ -138,12 +162,6 @@ async def session(test_config: TestConfig):
     OFFLINE_MODE = test_config['OFFLINE_MODE']
 
     if OFFLINE_MODE:
-
-        class FakeSession:
-            @staticmethod
-            async def request(*_, **__):
-                return FakeResponse()
-
         orig_session = SessionManager.session
         SessionManager.session = FakeSession()  # type: ignore
         yield
@@ -156,7 +174,7 @@ async def session(test_config: TestConfig):
         async def recording_request(*args, **kwargs):
             resp = await original_request(*args, **kwargs)
             content = await resp.read()
-            FakeResponse().file.write_bytes(content)
+            FakeSession.file(args[2]).write_bytes(content)
             return resp
 
         ClientSession.request = recording_request  # type: ignore
@@ -179,7 +197,7 @@ def pytest_collection_modifyitems(items: list[Function]):
 
 def remove_unused_testdata():
     """Removes test data files that were not used during the test run."""
-    unused_testdata = {f.name for f in testdata.iterdir()} - USED_FILENAMES
+    unused_testdata = {*testdata.iterdir()} - _used_files
 
     if not unused_testdata:
         print('REMOVE_UNUSED_TESTDATA: no action required')
@@ -189,34 +207,34 @@ def remove_unused_testdata():
         print(f'REMOVE_UNUSED_TESTDATA: removed {filename}')
 
 
-USED_FILENAMES = set()
+_used_files = set[Path]()
 # atexit.register is now called conditionally in pytest_configure
 
 
 def file(filename: str):
-    """Mocks the response files for a single file test case."""
-    # Checks if cleanup is active using the minimal global flag set in pytest_configure
-    if _remove_unused_testdata:
-        USED_FILENAMES.add(filename)
-
     return patch.object(
-        FakeResponse,
-        'files',
-        cycle([testdata / filename]),
+        FakeSession,
+        'file_map',
+        [('', testdata / filename)],
     )
 
 
 def files(*filenames: str):
-    """Mocks the response files for sequential file test cases."""
-    # Checks if cleanup is active using the minimal global flag set in pytest_configure
-    if _remove_unused_testdata:
-        for filename in filenames:
-            USED_FILENAMES.add(filename)
-
     return patch.object(
-        FakeResponse,
-        'files',
-        (testdata / filename for filename in filenames),
+        FakeSession,
+        'file_map',
+        [('', [testdata / fn for fn in reversed(filenames)])],
+    )
+
+
+def file_map(*url_end__filename: tuple[str, str]):
+    return patch.object(
+        FakeSession,
+        'file_map',
+        [
+            (key, testdata / file_name)
+            for (key, file_name) in url_end__filename
+        ],
     )
 
 
