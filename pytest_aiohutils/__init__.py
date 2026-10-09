@@ -133,7 +133,6 @@ class FakeSession:
 
     @classmethod
     def file(cls, url: str):
-        print(url, cls.file_map)
         for url_end, file_or_files in cls.file_map:
             if url.endswith(url_end):
                 break
