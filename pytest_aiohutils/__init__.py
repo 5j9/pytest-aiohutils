@@ -109,7 +109,7 @@ class EqualToEverything:
 class FakeResponse:
     """A mock response object for offline mode."""
 
-    __slots__ = 'file'
+    __slots__ = ('file',)
     url = EqualToEverything()
     history = ()
 
